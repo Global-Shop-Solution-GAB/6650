@@ -1,0 +1,67 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Programmed for WIP to WIP transaction with child WO closed to parent WO
+'hook id 55871 - post save hook for SFC>transactions>transfer WIP to WIP 
+'by Brady Stevens
+'02/28/22
+'programmed for BEG
+'purpose is to close the parent WO material child seq when the child WO is closed through WIP to WIP
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+V.Local.sJob.Declare(String)
+V.Local.sSuffix.Declare(String)
+V.Local.sSeq.Declare(String)
+v.Local.bClose.Declare(Boolean)
+
+Function.ODBC.Connection!Conx.Opencompanyconnection
+
+v.Local.sJob.Set(v.Passed.000002)
+f.Intrinsic.String.RTrim(v.Local.sJob,v.Local.sJob)
+v.Local.sSuffix.set(v.Passed.000006)
+f.Intrinsic.String.RTrim(v.Local.sSuffix,v.Local.sSuffix)
+v.Local.sSeq.Set(v.Passed.000008)
+f.Intrinsic.String.RTrim(v.Local.sSeq,v.Local.sSeq)
+f.Intrinsic.Control.If(v.Passed.000030,=,"Y")
+	v.Local.bClose.Set(True)
+f.Intrinsic.Control.Else
+	v.Local.bClose.Set(False)
+f.Intrinsic.Control.EndIf
+
+'Check if close flag is set for child WO on WIP.  If set then close parent WO child material seq as well as
+'delete job_commitments and reduce inventory_mstr.qty_required against part
+
+f.Intrinsic.Control.If(v.Local.bClose,=,True)
+
+    F.Global.Callwrapper.New("CloseWOSeq","Manufacturing.CloseWorkOrderSequence")
+    F.Global.Callwrapper.SetProperty("CloseWOSeq","BeginningWorkOrder",V.Local.sJob)
+    F.Global.Callwrapper.SetProperty("CloseWOSeq","BeginningWorkOrderSuffix",V.Local.sSuffix)
+    F.Global.Callwrapper.SetProperty("CloseWOSeq","WorkOrderSequence",V.Local.sSeq)
+    F.Global.Callwrapper.SetProperty("CloseWOSeq","CloseDate",V.Ambient.Date)
+    F.Global.Callwrapper.Run("CloseWOSeq")
+
+f.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.CallSub(close)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",v.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End 
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+
+
+Program.Sub.close.Start
+F.ODBC.Connection!Conx.Close
+F.Intrinsic.Control.End
+Program.Sub.close.End
+
+Program.Sub.Comments.Start
+${$0$}$$}$$}$12:00:00 AM
+Program.Sub.Comments.End
